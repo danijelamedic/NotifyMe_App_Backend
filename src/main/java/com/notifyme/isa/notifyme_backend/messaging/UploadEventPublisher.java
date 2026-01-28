@@ -1,5 +1,6 @@
 package com.notifyme.isa.notifyme_backend.messaging;
 
+import com.notifyme.isa.notifyme_backend.messaging.dto.UploadCreatedEvent;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,7 @@ public class UploadEventPublisher {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    public void publish(String message) {
-        rabbitTemplate.convertAndSend(exchangeName, routingKey, message);
+    public void publish(UploadCreatedEvent event) {
+        rabbitTemplate.convertAndSend(exchangeName, routingKey, event);
     }
 }
