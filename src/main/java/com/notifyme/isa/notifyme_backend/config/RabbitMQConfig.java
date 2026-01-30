@@ -111,8 +111,11 @@ public class RabbitMQConfig {
     @Bean
     public Queue uploadEventsPbQueue() {
         return QueueBuilder.durable(UPLOAD_EVENTS_PB_QUEUE)
+                .withArgument("x-dead-letter-exchange", dlxName)
+                .withArgument("x-dead-letter-routing-key", dlqRoutingKey)
                 .build();
     }
+
 
     @Bean
     public Binding uploadEventsPbBinding(

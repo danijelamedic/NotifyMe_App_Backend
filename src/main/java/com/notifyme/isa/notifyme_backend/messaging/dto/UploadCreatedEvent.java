@@ -6,13 +6,17 @@ public class UploadCreatedEvent {
     private Long videoId;
     private String authorUsername;
     private Instant createdAt;
+    private String title;
+    private Long sizeBytes;
 
     public UploadCreatedEvent() {}
 
-    public UploadCreatedEvent(Long videoId, String authorUsername, Instant createdAt) {
+    public UploadCreatedEvent(Long videoId, String authorUsername, Instant createdAt, String title, Long sizeBytes) {
         this.videoId = videoId;
         this.authorUsername = authorUsername;
         this.createdAt = createdAt;
+        this.title = title;
+        this.sizeBytes = sizeBytes;
     }
 
     public Long getVideoId() { return videoId; }
@@ -23,4 +27,10 @@ public class UploadCreatedEvent {
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+
+    public Long getSizeBytes() { return sizeBytes; }
+    public void setSizeBytes(Long sizeBytes) { this.sizeBytes = sizeBytes; }
 }
