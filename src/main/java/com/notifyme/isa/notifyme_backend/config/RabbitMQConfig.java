@@ -6,12 +6,17 @@ import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQConfig {
+
+    public static final String UPLOAD_CREATED_PB_ROUTING_KEY = "upload.created.pb";
+    public static final String UPLOAD_EVENTS_PB_QUEUE = "notifyme.upload.events.pb";
+
 
     @Value("${notifyme.exchange}")
     private String exchangeName;
@@ -22,7 +27,6 @@ public class RabbitMQConfig {
     @Value("${notifyme.routing-key}")
     private String routingKey;
 
-    // DLQ/DLX
     @Value("${notifyme.dlx}")
     private String dlxName;
 
@@ -54,11 +58,6 @@ public class RabbitMQConfig {
                 .with(dlqRoutingKey);
     }
 
-
-    /**
-     * Main queue sa DLX podešavanjem:
-     * Ako consumer ne uspe nakon retry-a, poruka ide na DLX sa dlqRoutingKey
-     */
     @Bean
     public Queue notifyMeQueue() {
         return QueueBuilder.durable(queueName)
@@ -107,6 +106,25 @@ public class RabbitMQConfig {
         template.setMessageConverter(messageConverter);
         return template;
     }
+
+
+    @Bean
+    public Queue uploadEventsPbQueue() {
+        return QueueBuilder.durable(UPLOAD_EVENTS_PB_QUEUE)
+                .build();
+    }
+
+    @Bean
+    public Binding uploadEventsPbBinding(
+            @Qualifier("notifyMeExchange") TopicExchange notifyMeExchange,
+            @Qualifier("uploadEventsPbQueue") Queue uploadEventsPbQueue
+    ) {
+        return BindingBuilder.bind(uploadEventsPbQueue)
+                .to(notifyMeExchange)
+                .with(UPLOAD_CREATED_PB_ROUTING_KEY);
+    }
+
+
 
 
 }
