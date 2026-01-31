@@ -6,6 +6,7 @@ import com.notifyme.isa.notifyme_backend.messaging.dto.UploadCreatedEvent;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,16 +24,19 @@ class SerializationBenchmarkTest {
         objectMapper.registerModule(new JavaTimeModule());
 
         // 1) napravi 50 JSON DTO eventova
-        Instant ts = Instant.now();
+        LocalDateTime ts = LocalDateTime.now();
         List<UploadCreatedEvent> jsonEvents = new ArrayList<>();
         for (int i = 0; i < N; i++) {
-            jsonEvents.add(new UploadCreatedEvent(
-                    (long) (100 + i),
-                    "author" + i,
-                    ts,
-                    "Video " + i,
-                    123456L + i
-            ));
+            UploadCreatedEvent e = new UploadCreatedEvent();
+            e.setVideoId(100L + i);
+            e.setAuthorUsername("author_" + i);
+            e.setTitle("Video " + i);
+            e.setSizeBytes(123456L + i);
+            e.setThumbnailSizeBytes(999L + i);
+            e.setCreatedAtFlexible(Instant.now().toString());
+
+            jsonEvents.add(e);
+
         }
 
 

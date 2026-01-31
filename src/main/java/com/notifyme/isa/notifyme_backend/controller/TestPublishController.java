@@ -6,6 +6,7 @@ import com.notifyme.isa.notifyme_backend.messaging.dto.UploadCreatedEvent;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/test")
@@ -29,7 +30,7 @@ public class TestPublishController {
         UploadCreatedEvent event = new UploadCreatedEvent();
         event.setVideoId(videoId);
         event.setAuthorUsername(authorUsername);
-        event.setCreatedAt(Instant.now());
+        event.setCreatedAtFlexible(LocalDateTime.now());
 
         publisher.publish(event);
         return "Sent upload.created event (JSON)";

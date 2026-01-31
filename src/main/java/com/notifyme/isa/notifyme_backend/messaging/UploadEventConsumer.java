@@ -20,5 +20,11 @@ public class UploadEventConsumer {
         System.out.println("[NotifyMe] Upload created: videoId=" + event.getVideoId()
                 + ", author=" + event.getAuthorUsername()
                 + ", createdAt=" + event.getCreatedAt());
+
+        System.out.println(" CONSUMED upload.created: videoId=" + event.getVideoId()
+                + " sizeBytes=" + event.getSizeBytes()
+                + " thumb=" + event.getThumbnailSizeBytes()
+                + " createdAt=" + event.getCreatedAt());
+
     }
 }
