@@ -1,17 +1,31 @@
 package com.notifyme.isa.notifyme_backend.config;
 
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.core.TopicExchange;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper;
+import org.springframework.amqp.support.converter.Jackson2JavaTypeMapper;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 @Configuration
 public class RabbitMQConfig {
+
+    public static final String UPLOAD_CREATED_PB_ROUTING_KEY = "upload.created.pb";
+    public static final String UPLOAD_EVENTS_PB_QUEUE = "notifyme.upload.events.pb";
+
 
     @Value("${notifyme.exchange}")
     private String exchangeName;
@@ -22,14 +36,48 @@ public class RabbitMQConfig {
     @Value("${notifyme.routing-key}")
     private String routingKey;
 
+    @Value("${notifyme.dlx}")
+    private String dlxName;
+
+    @Value("${notifyme.dlq}")
+    private String dlqName;
+
+    @Value("${notifyme.dlq-routing-key}")
+    private String dlqRoutingKey;
+
     @Bean
     public TopicExchange notifyMeExchange() {
         return new TopicExchange(exchangeName, true, false);
     }
+//    @Bean
+//    public DirectExchange deadLetterExchange() {
+//        return new DirectExchange(dlxName, true, false);
+//    }
+
+    @Bean
+    public TopicExchange deadLetterExchange() {
+        return new TopicExchange(dlxName, true, false);
+    }
+
+    @Bean
+    public Binding deadLetterBinding(Queue deadLetterQueue, TopicExchange deadLetterExchange) {
+        return BindingBuilder
+                .bind(deadLetterQueue)
+                .to(deadLetterExchange)
+                .with(dlqRoutingKey);
+    }
 
     @Bean
     public Queue notifyMeQueue() {
-        return new Queue(queueName, true);
+        return QueueBuilder.durable(queueName)
+                .withArgument("x-dead-letter-exchange", dlxName)
+                .withArgument("x-dead-letter-routing-key", dlqRoutingKey)
+                .build();
+    }
+
+    @Bean
+    public Queue deadLetterQueue() {
+        return QueueBuilder.durable(dlqName).build();
     }
 
     @Bean
@@ -40,8 +88,88 @@ public class RabbitMQConfig {
                 .with(routingKey);
     }
 
+//    @Bean
+//    public Binding deadLetterBinding(Queue deadLetterQueue, DirectExchange deadLetterExchange) {
+//        return BindingBuilder
+//                .bind(deadLetterQueue)
+//                .to(deadLetterExchange)
+//                .with(dlqRoutingKey);
+//    }
+
+
     @Bean
-    public MessageConverter jsonMessageConverter() {
+    public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {
+        RabbitAdmin admin = new RabbitAdmin(connectionFactory);
+        admin.setAutoStartup(true);
+        return admin;
+    }
+
+    @Bean
+    public MessageConverter messageConverter() {
         return new Jackson2JsonMessageConverter();
     }
+
+    @Bean
+    public Jackson2JsonMessageConverter jackson2JsonMessageConverter(ObjectMapper objectMapper) {
+        Jackson2JsonMessageConverter converter =
+                new Jackson2JsonMessageConverter(objectMapper);
+
+        DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+        typeMapper.setTypePrecedence(Jackson2JavaTypeMapper.TypePrecedence.INFERRED);
+
+        converter.setJavaTypeMapper(typeMapper);
+        return converter;
+    }
+
+
+
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, Jackson2JsonMessageConverter messageConverter) {
+        RabbitTemplate template = new RabbitTemplate(connectionFactory);
+        template.setMessageConverter(messageConverter);
+        return template;
+    }
+
+
+    @Bean
+    public Queue uploadEventsPbQueue() {
+        return QueueBuilder.durable(UPLOAD_EVENTS_PB_QUEUE)
+                .withArgument("x-dead-letter-exchange", dlxName)
+                .withArgument("x-dead-letter-routing-key", dlqRoutingKey)
+                .build();
+    }
+
+
+    @Bean
+    public Binding uploadEventsPbBinding(
+            @Qualifier("notifyMeExchange") TopicExchange notifyMeExchange,
+            @Qualifier("uploadEventsPbQueue") Queue uploadEventsPbQueue
+    ) {
+        return BindingBuilder.bind(uploadEventsPbQueue)
+                .to(notifyMeExchange)
+                .with(UPLOAD_CREATED_PB_ROUTING_KEY);
+    }
+
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+
+        JavaTimeModule timeModule = new JavaTimeModule();
+
+        timeModule.addDeserializer(
+                LocalDateTime.class,
+                new LocalDateTimeDeserializer(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        );
+
+        mapper.registerModule(timeModule);
+
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        return mapper;
+    }
+
+
+
 }
+
